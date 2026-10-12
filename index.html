@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#e9a514">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Flota">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Mantenimiento Flota</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: planilla de taller — barra superior con pestañas, resumen arriba, detalle abajo; chapas Mercosur como identificador de cada unidad */
+:root{
+  --bg:#eceff2; --surface:#ffffff; --surface-2:#f5f7f9; --ink:#1a2026; --muted:#5b6670; --line:#d3d9df;
+  --accent:#e9a514; --accent-ink:#1a2026; --accent-soft:#fbefd2;
+  --plate-bg:#ffffff; --plate-ink:#121212; --plate-band:#1d3e94; --plate-band-ink:#ffffff;
+  --ok:#2c7a4b; --ok-soft:#dcefe3; --warn:#a96300; --warn-soft:#fbead0; --bad:#bf3627; --bad-soft:#f8dcd8;
+  --bar:#3f5568; --bar-2:#9aabb9;
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:6px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111519; --surface:#192026; --surface-2:#1f272e; --ink:#e6e9ec; --muted:#97a2ac; --line:#2c353d;
+  --accent:#f2b630; --accent-ink:#15191d; --accent-soft:#3a2f14;
+  --ok:#55b47e; --ok-soft:#1d3527; --warn:#e8a243; --warn-soft:#3b2c15; --bad:#ee6d5d; --bad-soft:#3d201c;
+  --bar:#8fa6ba; --bar-2:#4b5e6e; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#111519; --surface:#192026; --surface-2:#1f272e; --ink:#e6e9ec; --muted:#97a2ac; --line:#2c353d;
+  --accent:#f2b630; --accent-ink:#15191d; --accent-soft:#3a2f14;
+  --ok:#55b47e; --ok-soft:#1d3527; --warn:#e8a243; --warn-soft:#3b2c15; --bad:#ee6d5d; --bad-soft:#3d201c;
+  --bar:#8fa6ba; --bar-2:#4b5e6e; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:0 48px}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);border-bottom:1px solid var(--line)}
+.top-in{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:12px 0;display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 24px}
+.brand{display:flex;align-items:center;gap:10px;padding-bottom:12px}
+.brand-mark{width:30px;height:30px;border-radius:5px;background:var(--accent);display:grid;place-items:center}
+.brand h1{font-family:var(--f-display);font-weight:700;font-size:24px;letter-spacing:.02em;margin:0;text-transform:uppercase;line-height:1}
+.brand small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+nav.tabs{display:flex;gap:4px;flex:1;min-width:0}
+nav.tabs button{font:600 15px var(--f-display);letter-spacing:.06em;text-transform:uppercase;background:none;border:0;color:var(--muted);padding:8px 12px 12px;border-bottom:3px solid transparent;cursor:pointer}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.top-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding-bottom:10px;margin-left:auto}
+.top-actions .who{padding-bottom:0}
+button,select,input,textarea{font:inherit;color:inherit}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:var(--r);padding:7px 12px;font-weight:500;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn.primary:hover{filter:brightness(1.05)}
+.btn.danger{color:var(--bad)}
+.btn.danger.armed{background:var(--bad);color:var(--surface);border-color:var(--bad)}
+.btn.sm{padding:4px 9px;font-size:13px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.banner{margin-top:16px;padding:10px 14px;border-radius:var(--r);background:var(--accent-soft);border:1px solid var(--accent);display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between}
+.banner.err{background:var(--bad-soft);border-color:var(--bad)}
+section.view{padding-top:20px;display:grid;gap:20px}
+h2.sec{font-family:var(--f-display);font-weight:600;font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.kpi{background:var(--surface);padding:14px 16px;display:grid;gap:4px;align-content:start}
+.kpi .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.kpi .v{font-family:var(--f-display);font-weight:700;font-size:28px;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi .s{font-size:12px;color:var(--muted)}
+.pos{color:var(--ok)} .neg{color:var(--bad)}
+.grid2{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:20px}
+@media (max-width:860px){.grid2{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;min-width:0}
+.alerts{display:grid;gap:6px}
+.alert{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;border-radius:5px;background:var(--surface-2);border-left:4px solid var(--line);cursor:pointer}
+.alert.bad{border-left-color:var(--bad);background:var(--bad-soft)}
+.alert.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+.alert .what{font-weight:500}
+.alert .when{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.alert.bad .when{color:var(--bad)} .alert.warn .when{color:var(--warn)}
+.empty{color:var(--muted);padding:12px 0}
+/* Chapa Mercosur */
+.plate{display:inline-flex;flex-direction:column;background:var(--plate-bg);color:var(--plate-ink);border:1.5px solid var(--plate-ink);border-radius:4px;overflow:hidden;line-height:1;min-width:76px;text-align:center;flex:none}
+.plate i{font-style:normal;background:var(--plate-band);color:var(--plate-band-ink);font-size:6.5px;letter-spacing:.12em;padding:2px 4px;font-family:var(--f-body);font-weight:600}
+.plate b{font-family:var(--f-mono);font-weight:600;font-size:13px;letter-spacing:.06em;padding:3px 6px 4px}
+.plate.lg{min-width:120px}.plate.lg i{font-size:8px;padding:3px}.plate.lg b{font-size:20px;padding:5px 10px 6px}
+/* chips */
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 11px;font-size:13px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.tag{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:3px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line);white-space:nowrap}
+.tag.activo{color:var(--ok);background:var(--ok-soft);border-color:transparent}
+.tag.enventa{color:var(--warn);background:var(--warn-soft);border-color:transparent}
+.tag.alquilado{color:var(--plate-band-ink);background:var(--plate-band);border-color:transparent}
+.tag.taller{color:var(--bad);background:var(--bad-soft);border-color:transparent}
+.tag.vendido{text-decoration:line-through}
+.tag.ej{background:var(--accent-soft);color:var(--ink);border-color:var(--accent)}
+/* tarjetas de vehículos */
+.vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
+.vcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:12px;cursor:pointer;text-align:left;width:100%}
+.vcard:hover{border-color:var(--muted)}
+.vcard .hd{display:flex;gap:12px;align-items:center;min-width:0}
+.vcard .nm{min-width:0}
+.vcard .nm strong{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vcard .nm span{color:var(--muted);font-size:12.5px}
+.vcard dl{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin:0}
+.vcard dt{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.vcard dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
+.vcard .ft{display:flex;flex-wrap:wrap;gap:6px}
+.seg{background:var(--surface-2);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:5px;padding:9px 11px;display:grid;gap:6px}
+.seg.ok{border-left-color:var(--ok)} .seg.warn{border-left-color:var(--warn);background:var(--warn-soft)} .seg.bad{border-left-color:var(--bad);background:var(--bad-soft)}
+.seg-hd{display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap}
+.seg-t{font-family:var(--f-display);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.seg-e{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.seg.ok .seg-e{color:var(--ok)} .seg.warn .seg-e{color:var(--warn)} .seg.bad .seg-e{color:var(--bad)}
+.seg-co{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:1px}
+/* tablas */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;background:var(--surface-2);position:sticky;top:0}
+td.num,th.num{text-align:right}
+tr.clk{cursor:pointer} tr.clk:hover td{background:var(--surface-2)}
+td.det{white-space:normal;min-width:180px;color:var(--muted)}
+tfoot td{font-weight:600;background:var(--surface-2);border-bottom:0}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.toolbar .f{display:flex;flex-wrap:wrap;gap:8px}
+select.in,input.in,textarea.in{border:1px solid var(--line);background:var(--surface);border-radius:var(--r);padding:7px 10px;min-width:0;width:100%}
+.toolbar select.in{width:auto}
+/* gráfico */
+.chart svg{display:block;width:100%;height:auto}
+.chart text{fill:var(--muted);font-size:11px;font-family:var(--f-body)}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-top:6px}
+.hbars{display:grid;gap:8px}
+.hbar{display:grid;grid-template-columns:110px minmax(0,1fr) auto;gap:10px;align-items:center;font-size:13px}
+.hbar .t{height:10px;background:var(--surface-2);border-radius:2px;overflow:hidden}
+.hbar .t span{display:block;height:100%;background:var(--bar)}
+.hbar .n{font-variant-numeric:tabular-nums;font-weight:600}
+/* dialog */
+dialog{border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);padding:0;width:min(720px,calc(100vw - 24px));max-height:calc(100dvh - 24px)}
+dialog::backdrop{background:rgba(10,14,18,.55)}
+.dlg-hd{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface);z-index:1}
+.dlg-hd h3{margin:0;font-family:var(--f-display);font-weight:700;font-size:20px;text-transform:uppercase;letter-spacing:.03em}
+.dlg-bd{padding:16px 18px;display:grid;gap:16px}
+.dlg-ft{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--line);position:sticky;bottom:0;background:var(--surface)}
+.dlg-ft .sp{flex:1}
+.x{border:0;background:none;font-size:22px;line-height:1;cursor:pointer;color:var(--muted);padding:4px 8px}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+.fgrid .full{grid-column:1/-1}
+label.fl{display:grid;gap:4px;font-size:12.5px;color:var(--muted);font-weight:500}
+fieldset{border:1px solid var(--line);border-radius:var(--r);padding:12px 14px 14px;margin:0}
+legend{font-family:var(--f-display);font-weight:600;letter-spacing:.07em;text-transform:uppercase;font-size:13px;color:var(--muted);padding:0 6px}
+.chk{display:flex;gap:8px;align-items:center;font-size:13px}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.summary div{background:var(--surface);padding:10px 12px}
+.summary .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.summary .v{font-family:var(--f-display);font-weight:700;font-size:21px;font-variant-numeric:tabular-nums}
+.vhead{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+.vhead .meta{color:var(--muted)}
+body.staff .own{display:none!important}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:9px 16px;border-radius:var(--r);font-weight:500;z-index:50}
+.muted{color:var(--muted)}
+@media (max-width:560px){.top-actions .btn .lbl{display:none} .kpi .v{font-size:23px}}
+@media (prefers-reduced-motion:no-preference){.vcard,.btn,.chip{transition:border-color .15s,background .15s}}
+html,body{margin:0}
+body{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.login{min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding-inline:16px;padding-block:32px}
+.login-card{width:min(400px,100%);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:24px;display:grid;gap:16px}
+.login-card .brand{padding:0}
+.login-card h2{font-family:var(--f-display);font-weight:700;font-size:22px;text-transform:uppercase;letter-spacing:.03em;margin:0}
+.login-card form{display:grid;gap:12px}
+.login-card .btn{justify-content:center;padding:10px 12px;font-size:15px}
+.pin{letter-spacing:.3em;font-family:var(--f-mono);font-size:18px}
+.err{color:var(--bad);font-size:13px;font-weight:500;min-height:1em}
+.who{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);padding-bottom:12px}
+.who b{color:var(--ink);font-weight:600}
+.role{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:2px 7px;border-radius:3px;background:var(--accent-soft);color:var(--ink);border:1px solid var(--accent)}
+</style>
+</head>
+<body>
+
+<div class="login" id="login" hidden>
+  <div class="login-card">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l2-5a2 2 0 0 1 1.9-1.4h10.2A2 2 0 0 1 19 8l2 5v4h-2"/><path d="M5 17H3v-4h18"/><circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/><path d="M9.5 17h5"/></svg></div>
+      <div><h1>Mantenimiento Flota</h1><small>Barda del Medio · Río Negro</small></div>
+    </div>
+    <div id="login-body"></div>
+  </div>
+</div>
+
+<div id="app" hidden>
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l2-5a2 2 0 0 1 1.9-1.4h10.2A2 2 0 0 1 19 8l2 5v4h-2"/><path d="M5 17H3v-4h18"/><circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/><path d="M9.5 17h5"/></svg></div>
+      <div><h1>Mantenimiento Flota</h1><small id="sub">Barda del Medio · Río Negro</small></div>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="panel" id="t-panel" aria-selected="true">Panel</button>
+      <button role="tab" data-tab="vehiculos" id="t-vehiculos" aria-selected="false">Vehículos</button>
+      <button role="tab" data-tab="movimientos" id="t-movimientos" aria-selected="false">Gastos e ingresos</button>
+      <button role="tab" data-tab="usuarios" id="t-usuarios" aria-selected="false" class="own">Usuarios</button>
+    </nav>
+    <div class="top-actions">
+      <span class="who" id="who"></span>
+      <button class="btn own" data-act="new-veh" id="b-newveh"><span aria-hidden="true">＋</span><span class="lbl">Vehículo</span></button>
+      <button class="btn primary" data-act="new-mov" id="b-newmov"><span aria-hidden="true">＋</span><span class="lbl">Cargar gasto</span></button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="banner"></div>
+
+  <section class="view" id="v-panel">
+    <div class="kpis" id="kpis"></div>
+    <div class="grid2">
+      <div class="panel">
+        <h2 class="sec">Gastos por mes · últimos 12 meses</h2>
+        <div class="chart" id="chart"></div>
+      </div>
+      <div class="panel">
+        <h2 class="sec">Vencimientos y services</h2>
+        <div class="alerts" id="alerts"></div>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="panel" style="padding:0;border:0;background:none">
+        <h2 class="sec">Costo por vehículo</h2>
+        <div class="tbl-wrap" id="costtbl"></div>
+      </div>
+      <div class="panel">
+        <h2 class="sec">En qué se va la plata · 12 meses</h2>
+        <div class="hbars" id="bytype"></div>
+      </div>
+    </div>
+    <div>
+      <h2 class="sec">Seguros por unidad</h2>
+      <div class="tbl-wrap" id="segtbl"></div>
+      <p class="muted" style="font-size:12.5px;margin:6px 0 0">“Pagado” suma los movimientos de tipo Seguro cargados para cada vehículo. La cuota mensual, aseguradora y cobertura se editan en los datos del vehículo.</p>
+    </div>
+  </section>
+
+  <section class="view" id="v-vehiculos" hidden>
+    <div class="toolbar">
+      <div class="chips" id="vfilter"></div>
+      <label class="chk"><input type="checkbox" id="showSold"> Mostrar vendidos</label>
+    </div>
+    <div class="vgrid" id="vgrid"></div>
+  </section>
+
+  <section class="view" id="v-movimientos" hidden>
+    <div class="toolbar">
+      <div class="f">
+        <select class="in" id="mf-veh" aria-label="Vehículo"></select>
+        <select class="in" id="mf-tipo" aria-label="Tipo"></select>
+        <select class="in" id="mf-per" aria-label="Período">
+          <option value="1">Este mes</option><option value="3">Últimos 3 meses</option>
+          <option value="12" selected>Últimos 12 meses</option><option value="0">Todo</option>
+        </select>
+      </div>
+      <button class="btn primary" data-act="new-mov" id="b-newmov2">＋ Cargar gasto o ingreso</button>
+    </div>
+    <div class="tbl-wrap" id="movtbl"></div>
+  </section>
+
+  <section class="view" id="v-usuarios" hidden>
+    <div class="toolbar">
+      <p class="muted" style="margin:0;max-width:60ch">Cada persona entra con su usuario y PIN desde el celular o la compu. Los empleados ven la flota y cargan gastos y services solo en los vehículos de reparto; no ven precios, capital ni ingresos.</p>
+      <button class="btn primary" data-act="new-user" id="b-newuser">＋ Nuevo usuario</button>
+    </div>
+    <div class="tbl-wrap" id="usrtbl"></div>
+  </section>
+</main>
+</div>
+
+<dialog id="dlg"></dialog>
+<div class="toast" id="toast" hidden></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+
+<script>
+(function(){
+const CATS={particular:{l:"Particular",c:"var(--bar)"},reparto:{l:"Reparto",c:"var(--accent)"},comercial:{l:"Compra-venta / alquiler",c:"var(--plate-band)"}};
+const ESTADOS={activo:"Activo",enventa:"En venta",alquilado:"Alquilado",taller:"En taller",vendido:"Vendido"};
+const TIPOS=[["service","Service"],["reparacion","Reparación"],["neumaticos","Neumáticos"],["combustible","Combustible"],["seguro","Seguro"],["patente","Patente"],["vtv","VTV"],["lavado","Lavado / estética"],["multa","Multa"],["otro","Otro gasto"],["alquiler","Ingreso por alquiler"],["otroing","Otro ingreso"]];
+const TIPOL=Object.fromEntries(TIPOS);
+const isIng=t=>t==="alquiler"||t==="otroing";
+
+let db=null, mode="loading", vehs=[], movs=[], vReady=false, mReady=false, cfg={};
+let owner=true, myId=null, userCap=null; const names={};
+let vehsRaw=[], precios={};
+const PRIV=["precioCompra","precioVenta","tcVenta"];
+const PRIV_KPI=["Capital en flota","Resultado compra-venta","Dólar de referencia","Ingresos por alquiler 12 m"];
+let movsMain=[], movsIng=[];
+function mergeMovs(){movs=[...movsMain,...movsIng]}
+const movCol=m=>(m&&m._col)||"movimientos";
+function mergeVehs(){vehs=vehsRaw.map(v=>({...v,...(precios[v.id]||{})}))}
+const vkm=v=>{let k=num(v.km)||0;for(const m of movs)if(m.vehiculoId===v.id&&num(m.km)>k)k=num(m.km);return k||null};
+const canLoad=v=>owner||(v&&v.categoria==="reparto"&&v.estado!=="vendido");
+const canEditMov=m=>owner||(m&&m.autor&&m.autor===myId);
+let perfiles=[], me=null;
+const who=m=>m.autor?(m.autor===myId?"Vos":(names[m.autor]||"Usuario")):(m.ejemplo?"Ejemplo":"—");
+const ui={tab:"panel",cat:"todos",sold:false};
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt=new Intl.NumberFormat("es-AR",{style:"currency",currency:"ARS",maximumFractionDigits:0});
+const money=n=>fmt.format(Math.round(n||0));
+const usd=n=>(n<0?"−":"")+"US$ "+Math.abs(Math.round(n||0)).toLocaleString("es-AR");
+const dolarRef=()=>num(cfg.dolar);
+const short=n=>{const a=Math.abs(n);if(a>=1e6)return "$"+(n/1e6).toLocaleString("es-AR",{maximumFractionDigits:1})+"M";if(a>=1e3)return "$"+Math.round(n/1e3).toLocaleString("es-AR")+"k";return "$"+Math.round(n)};
+const kmf=n=>n?Number(n).toLocaleString("es-AR")+" km":"—";
+const todayStr=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+const parseD=s=>{if(!s)return null;const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)};
+const dfmt=s=>{const d=parseD(s);return d?d.toLocaleDateString("es-AR",{day:"2-digit",month:"2-digit",year:"numeric"}):"—"};
+const daysTo=s=>{const d=parseD(s);if(!d)return null;const t=parseD(todayStr());return Math.round((d-t)/864e5)};
+const num=v=>{const n=Number(v);return isFinite(n)&&v!==""&&v!=null?n:null};
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const vname=v=>v?(v.nombre||[v.marca,v.modelo].filter(Boolean).join(" ")||"Sin nombre"):"(vehículo eliminado)";
+const plate=(p,lg)=>`<span class="plate${lg?" lg":""}"><i>REPÚBLICA ARGENTINA</i><b>${esc((p||"S/PAT").toUpperCase())}</b></span>`;
+
+function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>el.hidden=true,2200)}
+
+/* ---------- cálculos ---------- */
+function vStats(v){
+  const ms=movs.filter(m=>m.vehiculoId===v.id);
+  let gastos=0,ingresos=0,gas12=0,seg12=0,segTot=0;const lim=monthsAgo(12);
+  for(const m of ms){const a=Number(m.monto)||0;if(isIng(m.tipo))ingresos+=a;else{gastos+=a;if(m.fecha>=lim)gas12+=a;if(m.tipo==="seguro"){segTot+=a;if(m.fecha>=lim)seg12+=a}}}
+  const compra=Number(v.precioCompra)||0, venta=Number(v.precioVenta)||0;
+  const vendido=v.estado==="vendido";
+  const tc=(vendido&&num(v.tcVenta))||dolarRef();
+  const netoARS=gastos-ingresos;
+  const netoUSD=tc?netoARS/tc:null;
+  const resultado=vendido&&netoUSD!=null?venta-compra-netoUSD:null;
+  const neto=netoUSD!=null?compra+netoUSD:null;
+  let meses=null;if(v.fechaCompra){const a=parseD(v.fechaCompra),b=vendido&&v.fechaVenta?parseD(v.fechaVenta):new Date();meses=Math.max(1,(b-a)/(864e5*30.44))}
+  return {ms,gastos,ingresos,gas12,seg12,segTot,compra,venta,resultado,neto,netoUSD,tc,mensual:meses?(gastos)/meses:null,n:ms.length};
+}
+function monthsAgo(n){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-n+1);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-01"}
+function alerts(){
+  const out=[];
+  for(const v of vehs){
+    if(v.estado==="vendido")continue;
+    const chk=(fecha,label)=>{const d=daysTo(fecha);if(d==null)return;if(d<0)out.push({v,lvl:"bad",what:label+" vencida",when:`hace ${-d} d`,sort:d});else if(d<=30)out.push({v,lvl:"warn",what:label,when:d===0?"hoy":`en ${d} d`,sort:d})};
+    chk(v.vencVTV,"VTV");chk(v.vencSeguro,"Seguro");
+    const ds=daysTo(v.proxServiceFecha);
+    if(ds!=null){if(ds<0)out.push({v,lvl:"bad",what:"Service atrasado",when:`hace ${-ds} d`,sort:ds});else if(ds<=30)out.push({v,lvl:"warn",what:"Service",when:`en ${ds} d`,sort:ds})}
+    const pk=num(v.proxServiceKm),k=vkm(v);
+    if(pk&&k){const f=pk-k;if(f<=0)out.push({v,lvl:"bad",what:"Service por km",when:`pasado ${(-f).toLocaleString("es-AR")} km`,sort:-999});else if(f<=1500)out.push({v,lvl:"warn",what:"Service por km",when:`faltan ${f.toLocaleString("es-AR")} km`,sort:f/100})}
+  }
+  return out.sort((a,b)=>(a.lvl===b.lvl?0:a.lvl==="bad"?-1:1)||a.sort-b.sort);
+}
+
+/* ---------- render ---------- */
+function render(){
+  renderBanner();
+  if(ui.tab==="panel")renderPanel();
+  if(ui.tab==="vehiculos")renderVehs();
+  if(ui.tab==="movimientos")renderMovs();
+  if(ui.tab==="usuarios")renderUsers();
+}
+function renderBanner(){
+  const b=$("#banner");let h="";
+  const ej=vehs.filter(v=>v.ejemplo).length;
+  if(!owner&&mode==="db")h+=`<div class="banner"><span>Podés ver la flota y <b>cargar gastos y services de los vehículos de reparto</b>. Los movimientos que cargues quedan a tu nombre y solo vos o el dueño pueden modificarlos.</span></div>`;
+  if(ej&&owner)h+=`<div class="banner"><span>Hay <b>${ej} vehículos de ejemplo</b> con sus gastos para que veas cómo funciona. Cuando cargues los tuyos, borralos.</span><button class="btn sm danger" data-act="del-ej" id="b-delej">Borrar ejemplos</button></div>`;
+  if(mode==="loading"||(mode==="db"&&!(vReady&&mReady)))h+=`<div class="banner"><span>Cargando datos…</span></div>`;
+  b.innerHTML=h;
+}
+function renderPanel(){
+  const activos=vehs.filter(v=>v.estado!=="vendido");
+  const mes=monthsAgo(1),y12=monthsAgo(12);
+  let gMes=0,g12=0,i12=0;
+  for(const m of movs){const a=Number(m.monto)||0;if(isIng(m.tipo)){if(m.fecha>=y12)i12+=a}else{if(m.fecha>=mes)gMes+=a;if(m.fecha>=y12)g12+=a}}
+  const capital=activos.reduce((s,v)=>s+(Number(v.precioCompra)||0),0);
+  const vend=vehs.filter(v=>v.estado==="vendido"&&v.precioVenta);
+  const resList=vend.map(v=>vStats(v).resultado);const resOk=resList.every(r=>r!=null);
+  const resCV=resList.reduce((s,r)=>s+(r||0),0);
+  const tc=dolarRef();
+  const al=alerts();const nb=al.filter(a=>a.lvl==="bad").length;
+  const byCat=Object.keys(CATS).map(k=>activos.filter(v=>v.categoria===k).length);
+  $("#kpis").innerHTML=[
+    ["Vehículos activos",activos.length,`${byCat[0]} particular · ${byCat[1]} reparto · ${byCat[2]} comercial`],
+    ["Gasto este mes",money(gMes),new Date().toLocaleDateString("es-AR",{month:"long",year:"numeric"})],
+    ["Gasto 12 meses",money(g12),`promedio ${money(g12/12)} por mes`],
+    ["Ingresos por alquiler 12 m",money(i12),i12?`cubre ${Math.round(i12/Math.max(g12,1)*100)}% de los gastos`:"sin ingresos cargados"],
+    ["Capital en flota",usd(capital),"suma de precios de compra"],
+    ["Resultado compra-venta",resOk?`<span class="${resCV>=0?"pos":"neg"}">${usd(resCV)}</span>`:`<span class="muted">—</span>`,resOk?`${vend.length} vendidos · venta − compra − gastos netos en US$`:"cargá el dólar de referencia para calcularlo"],
+    ["Dólar de referencia",!owner?(tc?`$ ${tc.toLocaleString("es-AR")}`:"—"):tc?`$ ${tc.toLocaleString("es-AR")} <button class="btn sm" data-act="set-dolar" id="b-dolar" style="vertical-align:middle">Cambiar</button>`:`<button class="btn sm primary" data-act="set-dolar" id="b-dolar">Cargar dólar</button>`,"convierte los gastos en pesos a US$"],
+    ["Alertas",`<span class="${nb?"neg":""}">${al.length}</span>`,nb?`${nb} vencidas`:"nada vencido"]
+  ].filter(([l])=>owner||!PRIV_KPI.includes(l)).map(([l,v,s])=>`<div class="kpi"><span class="l">${l}</span><span class="v">${v}</span><span class="s">${esc(s)}</span></div>`).join("");
+  renderSeguros();
+
+  // gráfico mensual (gastos e ingresos)
+  const months=[];const d0=new Date();d0.setDate(1);
+  for(let i=11;i>=0;i--){const d=new Date(d0.getFullYear(),d0.getMonth()-i,1);months.push({k:d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"),l:d.toLocaleDateString("es-AR",{month:"short"}).replace(".",""),g:0,i:0})}
+  const mi=Object.fromEntries(months.map((m,i)=>[m.k,i]));
+  for(const m of movs){const k=(m.fecha||"").slice(0,7);if(k in mi){const a=Number(m.monto)||0;if(isIng(m.tipo))months[mi[k]].i+=a;else months[mi[k]].g+=a}}
+  const max=Math.max(1,...months.map(m=>Math.max(m.g,m.i)));
+  const step=niceStep(max/4),top=Math.ceil(max/step)*step;
+  const W=560,H=220,L=48,R=8,T=10,B=26,cw=(W-L-R)/12,bw=cw*0.34;
+  const y=v=>T+(H-T-B)*(1-v/top);
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Gastos e ingresos por mes">`;
+  for(let v=0;v<=top+1e-6;v+=step){s+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end">${short(v)}</text>`}
+  months.forEach((m,i)=>{const x=L+i*cw+cw/2;
+    if(m.g)s+=`<rect x="${x-bw-1}" y="${y(m.g)}" width="${bw}" height="${y(0)-y(m.g)}" fill="var(--bar)" rx="1.5"><title>${m.l}: gastos ${money(m.g)}</title></rect>`;
+    if(m.i)s+=`<rect x="${x+1}" y="${y(m.i)}" width="${bw}" height="${y(0)-y(m.i)}" fill="var(--accent)" rx="1.5"><title>${m.l}: ingresos ${money(m.i)}</title></rect>`;
+    s+=`<text x="${x}" y="${H-8}" text-anchor="middle">${m.l}</text>`});
+  s+=`</svg>`;
+  $("#chart").innerHTML=s+`<div class="legend"><span><span class="dot" style="background:var(--bar)"></span>Gastos</span>${owner?`<span><span class="dot" style="background:var(--accent)"></span>Ingresos por alquiler</span>`:""}</div>`;
+
+  // alertas
+  $("#alerts").innerHTML=al.length?al.slice(0,12).map(a=>`<div class="alert ${a.lvl}" data-act="open-veh" data-id="${esc(a.v.id)}" tabindex="0">${plate(a.v.patente)}<span class="what">${esc(a.what)} <span class="muted">· ${esc(vname(a.v))}</span></span><span class="when">${esc(a.when)}</span></div>`).join("")
+    :`<div class="empty">Sin vencimientos en los próximos 30 días. Cargá fechas de VTV, seguro y próximo service en cada vehículo para que aparezcan acá.</div>`;
+
+  // tabla de costos
+  const rows=vehs.filter(v=>v.estado!=="vendido").map(v=>({v,st:vStats(v)})).sort((a,b)=>b.st.gas12-a.st.gas12);
+  const tg=rows.reduce((s,r)=>s+r.st.gas12,0),ti=rows.reduce((s,r)=>s+r.st.ingresos,0);
+  $("#costtbl").innerHTML=rows.length?`<table><thead><tr><th>Vehículo</th><th>Uso</th><th class="num">Gasto 12 m</th><th class="num">Gasto/mes</th>${owner?`<th class="num">Ingresos</th>`:""}</tr></thead><tbody>${rows.map(({v,st})=>`<tr class="clk" data-act="open-veh" data-id="${esc(v.id)}"><td>${plate(v.patente)} &nbsp;${esc(vname(v))}</td><td><span class="dot" style="background:${CATS[v.categoria]?.c||"var(--muted)"}"></span>${esc(CATS[v.categoria]?.l||"—")}</td><td class="num">${money(st.gas12)}</td><td class="num">${st.mensual!=null?money(st.mensual):"—"}</td>${owner?`<td class="num">${st.ingresos?money(st.ingresos):"—"}</td>`:""}</tr>`).join("")}</tbody><tfoot><tr><td colspan="2">Total flota activa</td><td class="num">${money(tg)}</td><td></td>${owner?`<td class="num">${money(ti)}</td>`:""}</tr></tfoot></table>`
+    :`<div class="empty" style="padding:16px">Todavía no hay vehículos. Tocá “＋ Vehículo” para cargar el primero.</div>`;
+
+  // por tipo
+  const bt={};for(const m of movs){if(isIng(m.tipo)||m.fecha<y12)continue;bt[m.tipo]=(bt[m.tipo]||0)+(Number(m.monto)||0)}
+  const arr=Object.entries(bt).sort((a,b)=>b[1]-a[1]);const mx=arr[0]?.[1]||1;
+  $("#bytype").innerHTML=arr.length?arr.map(([k,v])=>`<div class="hbar"><span>${esc(TIPOL[k]||k)}</span><span class="t"><span style="width:${(v/mx*100).toFixed(1)}%"></span></span><span class="n">${money(v)}</span></div>`).join(""):`<div class="empty">Sin gastos cargados en los últimos 12 meses.</div>`;
+}
+function renderSeguros(){
+  const rows=vehs.filter(v=>v.estado!=="vendido").map(v=>({v,st:vStats(v)})).sort((a,b)=>b.st.seg12-a.st.seg12||vname(a.v).localeCompare(vname(b.v)));
+  const tc=rows.reduce((s,r)=>s+(Number(r.v.cuotaSeguro)||0),0),t12=rows.reduce((s,r)=>s+r.st.seg12,0),tt=rows.reduce((s,r)=>s+r.st.segTot,0);
+  const venc=v=>{const d=daysTo(v.vencSeguro);if(d==null)return `<span class="muted">—</span>`;const c=d<0?"taller":d<=30?"enventa":"activo";return `${dfmt(v.vencSeguro)} <span class="tag ${c}">${d<0?"vencido":d===0?"hoy":d<=30?`${d} d`:"vigente"}</span>`};
+  $("#segtbl").innerHTML=rows.length?`<table><thead><tr><th>Vehículo</th><th>Aseguradora</th><th>Cobertura</th><th class="num">Cuota mensual</th><th class="num">Pagado 12 m</th><th class="num">Pagado total</th><th>Vence</th></tr></thead><tbody>${rows.map(({v,st})=>`<tr class="clk" data-act="open-veh" data-id="${esc(v.id)}"><td>${plate(v.patente)} &nbsp;${esc(vname(v))}</td><td>${esc(v.aseguradora||"—")}</td><td>${esc(v.cobertura||"—")}</td><td class="num">${v.cuotaSeguro?money(v.cuotaSeguro):"—"}</td><td class="num">${st.seg12?money(st.seg12):"—"}</td><td class="num">${st.segTot?money(st.segTot):"—"}</td><td>${venc(v)}</td></tr>`).join("")}</tbody><tfoot><tr><td colspan="3">Total flota activa · ${rows.length} unidades</td><td class="num">${money(tc)}</td><td class="num">${money(t12)}</td><td class="num">${money(tt)}</td><td>${money(tc*12)} / año en cuotas</td></tr></tfoot></table>`
+    :`<div class="empty" style="padding:16px">Sin vehículos activos.</div>`;
+}
+function niceStep(x){const p=Math.pow(10,Math.floor(Math.log10(x||1)));const f=x/p;return (f<=1?1:f<=2?2:f<=5?5:10)*p}
+
+function segBox(v,st){
+  if(v.estado==="vendido")return "";
+  const d=daysTo(v.vencSeguro);
+  const lvl=d==null?"":d<0?"bad":d<=30?"warn":"ok";
+  const est=d==null?"Sin fecha de vencimiento":d<0?`Vencido hace ${-d} d`:d===0?"Vence hoy":d<=30?`Vence en ${d} d · ${dfmt(v.vencSeguro)}`:`Vigente hasta ${dfmt(v.vencSeguro)}`;
+  return `<div class="seg ${lvl}">
+    <div class="seg-hd"><span class="seg-t">Seguro</span><span class="seg-e">${esc(est)}</span></div>
+    <div class="seg-co">${esc(v.aseguradora||"Sin aseguradora cargada")}${v.cobertura?` <span class="muted">· ${esc(v.cobertura)}</span>`:""}</div>
+    <dl><div><dt>Cuota mensual</dt><dd>${v.cuotaSeguro?money(v.cuotaSeguro):"—"}</dd></div><div><dt>Pagado 12 m</dt><dd>${st.seg12?money(st.seg12):"—"}</dd></div></dl>
+  </div>`;
+}
+function renderVehs(){
+  const counts={todos:vehs.filter(v=>ui.sold||v.estado!=="vendido").length};
+  for(const k in CATS)counts[k]=vehs.filter(v=>v.categoria===k&&(ui.sold||v.estado!=="vendido")).length;
+  $("#vfilter").innerHTML=[["todos","Todos"],...Object.entries(CATS).map(([k,c])=>[k,c.l])].map(([k,l])=>`<button class="chip" data-act="vcat" data-k="${k}" aria-pressed="${ui.cat===k}">${esc(l)} <span class="muted">${counts[k]}</span></button>`).join("");
+  $("#showSold").checked=ui.sold;
+  const list=vehs.filter(v=>(ui.cat==="todos"||v.categoria===ui.cat)&&(ui.sold||v.estado!=="vendido")).sort((a,b)=>vname(a).localeCompare(vname(b)));
+  const al=alerts();
+  $("#vgrid").innerHTML=list.length?list.map(v=>{const st=vStats(v);const va=al.filter(a=>a.v.id===v.id);
+    const last=movs.filter(m=>m.vehiculoId===v.id&&m.tipo==="service").sort((a,b)=>b.fecha.localeCompare(a.fecha))[0];
+    return `<button class="vcard" data-act="open-veh" data-id="${esc(v.id)}">
+      <div class="hd">${plate(v.patente)}<div class="nm"><strong>${esc(vname(v))}</strong><span>${esc([v.marca,v.modelo,v.anio].filter(Boolean).join(" · "))}</span></div></div>
+      <dl>
+        <div><dt>Kilometraje</dt><dd>${kmf(vkm(v))}</dd></div>
+        <div><dt>Último service</dt><dd>${last?dfmt(last.fecha):"—"}</dd></div>
+        <div><dt>Gasto 12 m</dt><dd>${money(st.gas12)}</dd></div>
+        ${!owner?`<div><dt>Vence VTV</dt><dd>${dfmt(v.vencVTV)}</dd></div>`:`<div><dt>${v.estado==="vendido"?"Resultado":"Compra"}</dt><dd class="${v.estado==="vendido"&&st.resultado!=null?(st.resultado>=0?"pos":"neg"):""}">${v.estado==="vendido"?(st.resultado!=null?usd(st.resultado):"—"):(st.compra?usd(st.compra):"—")}</dd></div>`}
+      </dl>
+      ${segBox(v,st)}
+      <div class="ft"><span class="tag ${esc(v.estado)}">${esc(ESTADOS[v.estado]||v.estado)}</span><span class="tag"><span class="dot" style="background:${CATS[v.categoria]?.c||"var(--muted)"}"></span>${esc(CATS[v.categoria]?.l||"")}</span>${va.map(a=>`<span class="tag ${a.lvl==="bad"?"taller":"enventa"}">${esc(a.what)}</span>`).join("")}${v.ejemplo?`<span class="tag ej">Ejemplo</span>`:""}</div>
+    </button>`}).join(""):`<div class="empty">No hay vehículos en esta categoría.</div>`;
+}
+
+function renderMovs(){
+  const fv=$("#mf-veh"),ft=$("#mf-tipo");
+  const cv=fv.value||"",ct=ft.value||"";
+  fv.innerHTML=`<option value="">Todos los vehículos</option>`+vehs.slice().sort((a,b)=>vname(a).localeCompare(vname(b))).map(v=>`<option value="${esc(v.id)}">${esc(vname(v))} (${esc(v.patente||"s/pat")})</option>`).join("");
+  ft.innerHTML=`<option value="">Todos los tipos</option>`+(owner?`<option value="_g">Solo gastos</option><option value="_i">Solo ingresos</option>`:"")+(owner?TIPOS:TIPOS.filter(([k])=>!isIng(k))).map(([k,l])=>`<option value="${k}">${l}</option>`).join("");
+  fv.value=cv;ft.value=ct;
+  const per=Number($("#mf-per").value),lim=per?monthsAgo(per):"";
+  const list=movs.filter(m=>(!cv||m.vehiculoId===cv)&&(!ct||(ct==="_g"?!isIng(m.tipo):ct==="_i"?isIng(m.tipo):m.tipo===ct))&&(!lim||m.fecha>=lim)).sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
+  const vm=Object.fromEntries(vehs.map(v=>[v.id,v]));
+  let g=0,i=0;for(const m of list){if(isIng(m.tipo))i+=Number(m.monto)||0;else g+=Number(m.monto)||0}
+  $("#movtbl").innerHTML=list.length?`<table><thead><tr><th>Fecha</th><th>Vehículo</th><th>Tipo</th><th class="num">Km</th><th>Detalle</th><th>Cargó</th><th class="num">Monto</th></tr></thead><tbody>${list.map(m=>{const v=vm[m.vehiculoId];return `<tr class="clk" data-act="edit-mov" data-id="${esc(m.id)}"><td>${dfmt(m.fecha)}</td><td>${plate(v?.patente)} &nbsp;${esc(vname(v))}</td><td>${esc(TIPOL[m.tipo]||m.tipo)}</td><td class="num">${m.km?Number(m.km).toLocaleString("es-AR"):"—"}</td><td class="det">${esc([m.detalle,m.proveedor].filter(Boolean).join(" · "))}</td><td class="muted">${esc(who(m))}</td><td class="num ${isIng(m.tipo)?"pos":""}">${isIng(m.tipo)?"+":""}${money(m.monto)}</td></tr>`}).join("")}</tbody><tfoot><tr><td colspan="6">${list.length} movimientos · gastos ${money(g)}${owner?` · ingresos ${money(i)}`:""}</td><td class="num">${money(owner?i-g:g)}</td></tr></tfoot></table>`
+    :`<div class="empty" style="padding:16px">No hay movimientos con estos filtros.</div>`;
+}
+
+/* ---------- diálogos ---------- */
+const dlg=$("#dlg");
+function openDlg(html){dlg.innerHTML=html;if(!dlg.open)dlg.showModal();dlg.scrollTop=0}
+function closeDlg(){dlg.close();dlg.innerHTML=""}
+dlg.addEventListener("click",e=>{if(e.target===dlg)closeDlg()});
+
+function openVeh(id){
+  const v=vehs.find(x=>x.id===id);if(!v)return;const st=vStats(v);
+  const al=alerts().filter(a=>a.v.id===id);
+  const vendido=v.estado==="vendido";
+  const nd=`<span class="muted" style="font-size:14px">falta dólar</span>`;
+  const sum=[["Compra",st.compra?usd(st.compra):"—"],["Gastos totales",money(st.gastos)],["Ingresos",money(st.ingresos)],["Gastos netos en US$",st.netoUSD!=null?usd(st.netoUSD):nd]];
+  if(vendido)sum.push(["Venta",st.venta?usd(st.venta):"—"],["Resultado",st.resultado!=null?`<span class="${st.resultado>=0?"pos":"neg"}">${usd(st.resultado)}</span>`:nd]);
+  else sum.push(["Costo total en US$",st.neto!=null?usd(st.neto):nd],["Gasto por mes",st.mensual!=null?money(st.mensual):"—"]);
+  if(!owner){sum.length=0;sum.push(["Gastos totales",money(st.gastos)],["Gasto 12 meses",money(st.gas12)],["Gasto por mes",st.mensual!=null?money(st.mensual):"—"],["Seguro 12 meses",st.seg12?money(st.seg12):"—"])}
+  else if(!vendido&&v.precioVenta&&st.neto!=null)sum.push(["Ganancia si vendés a "+usd(v.precioVenta),`<span class="${(v.precioVenta-st.neto)>=0?"pos":"neg"}">${usd(v.precioVenta-st.neto)}</span>`]);
+  const ms=st.ms.slice().sort((a,b)=>(b.fecha||"").localeCompare(a.fecha||""));
+  openDlg(`<div class="dlg-hd"><h3>${esc(vname(v))}</h3><button class="x" data-act="close" aria-label="Cerrar">×</button></div>
+  <div class="dlg-bd">
+    <div class="vhead">${plate(v.patente,true)}<div><div><b>${esc([v.marca,v.modelo,v.anio].filter(Boolean).join(" · ")||"—")}</b></div><div class="meta">${kmf(vkm(v))} ·${esc(CATS[v.categoria]?.l||"")}</div><div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><span class="tag ${esc(v.estado)}">${esc(ESTADOS[v.estado]||"")}</span>${v.ejemplo?`<span class="tag ej">Ejemplo</span>`:""}</div></div></div>
+    <div class="summary">${sum.map(([l,x])=>`<div><div class="l">${esc(l)}</div><div class="v">${x}</div></div>`).join("")}</div>
+    ${st.tc&&owner?`<div class="muted" style="font-size:12.5px">Gastos e ingresos en pesos convertidos a $ ${st.tc.toLocaleString("es-AR")} por dólar${vendido&&num(v.tcVenta)?" (dólar del día de venta)":" (dólar de referencia)"}.</div>`:""}
+    <div class="summary">${[["Aseguradora",[v.aseguradora,v.cobertura].filter(Boolean).join(" · ")||"—"],["Cuota seguro",v.cuotaSeguro?money(v.cuotaSeguro)+"/mes":"—"],["Seguro pagado 12 m",st.seg12?money(st.seg12):"—"],["Seguro pagado total",st.segTot?money(st.segTot):"—"],["VTV vence",dfmt(v.vencVTV)],["Seguro vence",dfmt(v.vencSeguro)],["Próx. service",[v.proxServiceKm?Number(v.proxServiceKm).toLocaleString("es-AR")+" km":"",v.proxServiceFecha?dfmt(v.proxServiceFecha):""].filter(Boolean).join(" / ")||"—"],["Comprado",dfmt(v.fechaCompra)]].map(([l,x])=>`<div><div class="l">${l}</div><div style="font-weight:600;font-variant-numeric:tabular-nums">${esc(x)}</div></div>`).join("")}</div>
+    ${al.length?`<div class="alerts">${al.map(a=>`<div class="alert ${a.lvl}" style="cursor:default"><span></span><span class="what">${esc(a.what)}</span><span class="when">${esc(a.when)}</span></div>`).join("")}</div>`:""}
+    ${v.notas?`<div class="muted" style="white-space:pre-wrap">${esc(v.notas)}</div>`:""}
+    <div><div class="toolbar" style="margin-bottom:8px"><h2 class="sec" style="margin:0">Historial (${ms.length})</h2>${canLoad(v)?`<button class="btn sm primary" data-act="new-mov" data-veh="${esc(v.id)}">＋ Cargar</button>`:""}</div>
+    <div class="tbl-wrap">${ms.length?`<table><thead><tr><th>Fecha</th><th>Tipo</th><th class="num">Km</th><th>Detalle</th><th class="num">Monto</th></tr></thead><tbody>${ms.map(m=>`<tr class="clk" data-act="edit-mov" data-id="${esc(m.id)}"><td>${dfmt(m.fecha)}</td><td>${esc(TIPOL[m.tipo]||m.tipo)}</td><td class="num">${m.km?Number(m.km).toLocaleString("es-AR"):"—"}</td><td class="det">${esc([m.detalle,m.proveedor].filter(Boolean).join(" · "))}</td><td class="num ${isIng(m.tipo)?"pos":""}">${isIng(m.tipo)?"+":""}${money(m.monto)}</td></tr>`).join("")}</tbody></table>`:`<div class="empty" style="padding:12px">Sin movimientos cargados.</div>`}</div></div>
+  </div>
+  ${owner?`<div class="dlg-ft"><button class="btn danger" data-act="del-veh" data-id="${esc(v.id)}" id="b-delveh">Eliminar vehículo</button><span class="sp"></span><button class="btn" data-act="edit-veh" data-id="${esc(v.id)}">Editar datos</button></div>`:`<span hidden data-act="edit-veh" data-id="${esc(v.id)}"></span>`}`);
+}
+
+function field(id,label,val,type="text",extra=""){return `<label class="fl" for="${id}">${label}<input class="in" id="${id}" name="${id}" type="${type}" value="${esc(val??"")}" ${extra}></label>`}
+function sel(id,label,opts,val){return `<label class="fl" for="${id}">${label}<select class="in" id="${id}" name="${id}">${opts.map(([k,l])=>`<option value="${esc(k)}"${k===val?" selected":""}>${esc(l)}</option>`).join("")}</select></label>`}
+
+function vehForm(id){
+  const v=id?vehs.find(x=>x.id===id):{categoria:"reparto",estado:"activo"};
+  openDlg(`<form id="fveh"><div class="dlg-hd"><h3>${id?"Editar vehículo":"Nuevo vehículo"}</h3><button type="button" class="x" data-act="close" aria-label="Cerrar">×</button></div>
+  <div class="dlg-bd">
+    <fieldset><legend>Identificación</legend><div class="fgrid">
+      ${field("f-nombre","Nombre o apodo",v.nombre,"text",'placeholder="Ej: Hilux del corralón"')}
+      ${field("f-patente","Patente",v.patente,"text",'placeholder="AB123CD" style="text-transform:uppercase"')}
+      ${field("f-marca","Marca",v.marca)}${field("f-modelo","Modelo",v.modelo)}
+      ${field("f-anio","Año",v.anio,"number",'min="1950" max="2030"')}
+      ${field("f-km","Kilometraje actual",v.km,"number",'min="0" step="1"')}
+      ${sel("f-cat","Uso",Object.entries(CATS).map(([k,c])=>[k,c.l]),v.categoria)}
+      ${sel("f-estado","Estado",Object.entries(ESTADOS),v.estado)}
+    </div></fieldset>
+    <fieldset><legend>Compra y venta · en dólares</legend><div class="fgrid">
+      ${field("f-pc","Precio de compra (US$)",v.precioCompra,"number",'min="0" step="1"')}${field("f-fc","Fecha de compra",v.fechaCompra,"date")}
+      ${field("f-pv","Precio de venta o pretendido (US$)",v.precioVenta,"number",'min="0" step="1"')}${field("f-fv","Fecha de venta",v.fechaVenta,"date")}
+      ${field("f-tcv","Dólar del día de venta ($) · opcional",v.tcVenta,"number",'min="0" step="1" placeholder="Si lo dejás vacío usa el de referencia"')}
+    </div></fieldset>
+    <fieldset><legend>Seguro</legend><div class="fgrid">
+      ${field("f-aseg","Aseguradora",v.aseguradora,"text",'placeholder="Ej: La Segunda"')}
+      ${field("f-cob","Cobertura",v.cobertura,"text",'placeholder="Ej: Terceros completo"')}
+      ${field("f-cuota","Cuota mensual ($)",v.cuotaSeguro,"number",'min="0" step="1"')}
+    </div></fieldset>
+    <fieldset><legend>Vencimientos y service</legend><div class="fgrid">
+      ${field("f-vtv","Vence VTV",v.vencVTV,"date")}${field("f-seg","Vence seguro",v.vencSeguro,"date")}
+      ${field("f-psk","Próximo service (km)",v.proxServiceKm,"number",'min="0" step="1"')}${field("f-psf","Próximo service (fecha)",v.proxServiceFecha,"date")}
+    </div></fieldset>
+    <label class="fl" for="f-notas">Notas<textarea class="in" id="f-notas" rows="2">${esc(v.notas||"")}</textarea></label>
+  </div>
+  <div class="dlg-ft"><span class="sp"></span><button type="button" class="btn" data-act="close">Cancelar</button><button type="submit" class="btn primary">Guardar</button></div></form>`);
+  $("#fveh").addEventListener("submit",async e=>{e.preventDefault();
+    const g=k=>$("#"+k).value.trim();
+    const o={...(id?v:{}),nombre:g("f-nombre"),patente:g("f-patente").toUpperCase().replace(/\s+/g,""),marca:g("f-marca"),modelo:g("f-modelo"),anio:num(g("f-anio")),km:num(g("f-km")),categoria:g("f-cat"),estado:g("f-estado"),
+      precioCompra:num(g("f-pc")),fechaCompra:g("f-fc"),precioVenta:num(g("f-pv")),fechaVenta:g("f-fv"),tcVenta:num(g("f-tcv")),aseguradora:g("f-aseg"),cobertura:g("f-cob"),cuotaSeguro:num(g("f-cuota")),vencVTV:g("f-vtv"),vencSeguro:g("f-seg"),proxServiceKm:num(g("f-psk")),proxServiceFecha:g("f-psf"),notas:g("f-notas")};
+    if(o.estado==="vendido"&&!o.fechaVenta)o.fechaVenta=todayStr();
+    const nid=id||uid();delete o.id;
+    let ok;
+    if(mode==="db"){const pr={};for(const k of PRIV){if(o[k]!=null)pr[k]=o[k];delete o[k]}
+      ok=await save("vehiculos",nid,o,false)&&await save("precios",nid,pr)}
+    else ok=await save("vehiculos",nid,o);
+    if(ok){toast(id?"Vehículo actualizado":"Vehículo agregado");openVeh(nid)}
+  });
+}
+
+function movForm(id,vehId){
+  const allowed=vehs.filter(v=>canLoad(v)||(id&&movs.find(x=>x.id===id)?.vehiculoId===v.id));
+  if(!allowed.length){if(owner){toast("Primero cargá un vehículo");vehForm()}else toast("No hay vehículos de reparto cargados");return}
+  const m=id?movs.find(x=>x.id===id):{fecha:todayStr(),tipo:"service",vehiculoId:(vehId&&allowed.find(v=>v.id===vehId)?vehId:(allowed.find(v=>v.estado!=="vendido")||allowed[0]).id)};
+  if(id&&!canEditMov(m)){toast(`Cargado por ${who(m)}. Solo esa persona o el dueño pueden modificarlo.`);return}
+  const vopts=allowed.slice().sort((a,b)=>vname(a).localeCompare(vname(b))).map(v=>[v.id,vname(v)+" ("+(v.patente||"s/pat")+")"]);
+  const topts=owner?TIPOS:TIPOS.filter(([k])=>!isIng(k));
+  openDlg(`<form id="fmov"><div class="dlg-hd"><h3>${id?"Editar movimiento":"Cargar gasto o ingreso"}</h3><button type="button" class="x" data-act="close" aria-label="Cerrar">×</button></div>
+  <div class="dlg-bd"><div class="fgrid">
+    <div class="full">${sel("m-veh","Vehículo",vopts,m.vehiculoId)}</div>
+    ${sel("m-tipo","Tipo",topts,m.tipo)}${field("m-fecha","Fecha",m.fecha,"date","required")}
+    ${field("m-monto","Monto ($)",m.monto,"number",'min="0" step="1" required inputmode="numeric"')}${field("m-km","Km del vehículo",m.km,"number",'min="0" step="1"')}
+    <div class="full">${field("m-det","Detalle",m.detalle,"text",'placeholder="Ej: cambio de aceite y filtros"')}</div>
+    <div class="full">${field("m-prov","Taller o proveedor",m.proveedor)}</div>
+    <div class="full" id="m-svcbox">${field("m-next","Próximo service a los (km) — actualiza el vehículo","","number",'min="0" step="1" placeholder="Ej: 10000 km más que el actual"')}</div>
+  </div></div>
+  <div class="dlg-ft">${id?`<button type="button" class="btn danger" data-act="del-mov" data-id="${esc(id)}" id="b-delmov">Eliminar</button>`:""}<span class="sp"></span><button type="button" class="btn" data-act="close">Cancelar</button><button type="submit" class="btn primary">Guardar</button></div></form>`);
+  const tsel=$("#m-tipo"),box=$("#m-svcbox");const upd=()=>box.hidden=!owner||tsel.value!=="service";tsel.addEventListener("change",upd);upd();
+  $("#fmov").addEventListener("submit",async e=>{e.preventDefault();
+    const g=k=>$("#"+k).value.trim();
+    const o={vehiculoId:g("m-veh"),tipo:g("m-tipo"),fecha:g("m-fecha"),monto:num(g("m-monto"))||0,km:num(g("m-km")),detalle:g("m-det"),proveedor:g("m-prov")};
+    const old=id?movs.find(x=>x.id===id):null;if(old&&old.ejemplo)o.ejemplo=true;
+    const nid=id||uid();
+    const col=mode==="db"&&isIng(o.tipo)?"ingresos":"movimientos";
+    if(old&&movCol(old)!==col){if(!await save(col,uid(),o,false))return;await remove(movCol(old),nid,false)}
+    else if(!await save(col,nid,o,false))return;
+    const v=vehs.find(x=>x.id===o.vehiculoId);
+    if(v&&owner){const patch={};if(o.km&&(!v.km||o.km>v.km))patch.km=o.km;const nx=num(g("m-next"));if(o.tipo==="service"&&nx)patch.proxServiceKm=nx;
+      if(Object.keys(patch).length){const nv={...v,...patch};delete nv.id;await save("vehiculos",v.id,nv,false)}}
+    await loadAll();
+    toast(id?"Movimiento actualizado":"Movimiento guardado");closeDlg();
+  });
+}
+
+function dolarForm(){
+  openDlg(`<form id="fdol"><div class="dlg-hd"><h3>Dólar de referencia</h3><button type="button" class="x" data-act="close" aria-label="Cerrar">×</button></div>
+  <div class="dlg-bd"><p class="muted" style="margin:0">Los gastos se cargan en pesos y las compras y ventas en dólares. Este valor convierte los gastos a US$ para calcular costos y resultados. Actualizalo cuando quieras.</p>
+  ${field("d-val","Pesos por dólar",cfg.dolar,"number",'min="1" step="0.01" required inputmode="decimal"')}</div>
+  <div class="dlg-ft"><span class="sp"></span><button type="button" class="btn" data-act="close">Cancelar</button><button type="submit" class="btn primary">Guardar</button></div></form>`);
+  $("#d-val").focus();
+  $("#fdol").addEventListener("submit",async e=>{e.preventDefault();const n=num($("#d-val").value);if(!n)return;
+    const o={dolar:n,actualizado:todayStr()};
+    const {error}=await sb.from("config").upsert({id:1,...o});if(error){toast("No se pudo guardar.");return}await loadAll();
+    toast("Dólar actualizado");closeDlg()});
+}
+
+/* ---------- base de datos (Supabase) ---------- */
+const SB_URL="https://kamieucgyizpdbatpjia.supabase.co";
+const SB_KEY="sb_publishable_YcDEdrTX4UCqyZS17dOcWw_79D6ueWR";
+const DOM="flota-sp.app";
+const sb=supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
+const toCamel=k=>k==="venc_vtv"?"vencVTV":k.replace(/_([a-z])/g,(m,c)=>c.toUpperCase());
+const toSnake=k=>k==="vencVTV"?"venc_vtv":k.replace(/[A-Z]/g,c=>"_"+c.toLowerCase());
+const fromRow=r=>{const o={};for(const k in r)o[toCamel(k)]=r[k];return o};
+const COLS={
+  vehiculos:["nombre","patente","marca","modelo","anio","km","categoria","estado","fechaCompra","fechaVenta","vencVTV","vencSeguro","proxServiceKm","proxServiceFecha","aseguradora","cobertura","cuotaSeguro","notas","ejemplo"],
+  precios:["precioCompra","precioVenta","tcVenta"],
+  movimientos:["vehiculoId","tipo","fecha","monto","km","detalle","proveedor","ejemplo"],
+  ingresos:["vehiculoId","tipo","fecha","monto","km","detalle","proveedor","ejemplo"]
+};
+function toRow(col,id,obj){
+  const r={};for(const k of COLS[col]){let v=obj[k];if(v===""||v===undefined)v=null;r[toSnake(k)]=v}
+  if("ejemplo" in r)r.ejemplo=!!r.ejemplo;
+  if(col==="precios")r.vehiculo_id=id;else r.id=id;
+  return r;
+}
+async function fetchAll(table){
+  let out=[],from=0;
+  for(;;){const {data,error}=await sb.from(table).select("*").range(from,from+999);if(error)throw error;out=out.concat(data);if(data.length<1000)break;from+=1000}
+  return out;
+}
+let loading=null;
+async function loadAll(){
+  if(loading)return loading;
+  loading=(async()=>{
+    try{
+      const tasks=[fetchAll("vehiculos"),fetchAll("movimientos"),fetchAll("perfiles")];
+      if(owner)tasks.push(fetchAll("precios"),fetchAll("ingresos"),sb.from("config").select("*").eq("id",1).maybeSingle());
+      const [v,m,p,pr,ing,cf]=await Promise.all(tasks);
+      vehsRaw=v.map(fromRow);
+      movsMain=m.map(r=>({...fromRow(r),_col:"movimientos"}));
+      perfiles=p.map(fromRow);for(const x of perfiles)names[x.id]=x.nombre;
+      precios={};if(pr)for(const r of pr){const x=fromRow(r);precios[x.vehiculoId]={precioCompra:x.precioCompra,precioVenta:x.precioVenta,tcVenta:x.tcVenta}}
+      movsIng=ing?ing.map(r=>({...fromRow(r),_col:"ingresos"})):[];
+      cfg=cf&&cf.data?fromRow(cf.data):{};
+      mergeVehs();mergeMovs();vReady=mReady=true;
+      render();
+      if(dlg.open&&!dlg.querySelector("form")){const id=dlg.querySelector("[data-act=edit-veh]")?.dataset.id;if(id&&vehs.find(x=>x.id===id))openVeh(id)}
+    }catch(e){
+      if(e&&(e.status===401||/JWT/i.test(e.message||""))){await sb.auth.signOut();location.reload();return}
+      toast("No se pudieron cargar los datos. Revisá la conexión.");
+    }finally{loading=null}
+  })();
+  return loading;
+}
+function errMsg(error){
+  if(!error)return "";
+  if(error.code==="42501"||/row-level security|permission/i.test(error.message||""))return "No tenés permiso para hacer eso";
+  return "No se pudo guardar. Probá de nuevo.";
+}
+async function save(col,id,obj,reload=true){
+  const row=toRow(col,id,obj);
+  const {error}=await sb.from(col).upsert(row,{onConflict:col==="precios"?"vehiculo_id":"id"});
+  if(error){toast(errMsg(error));return false}
+  if(reload)await loadAll();
+  return true;
+}
+async function remove(col,id,reload=true){
+  const {error}=await sb.from(col).delete().eq(col==="precios"?"vehiculo_id":"id",id);
+  if(error){toast(error.code==="42501"?"No tenés permiso para eliminar eso":"No se pudo eliminar.");return false}
+  if(reload)await loadAll();
+  return true;
+}
+async function fn(body){
+  const {data,error}=await sb.functions.invoke("usuarios",{body});
+  if(error){let msg="No se pudo completar la operación";try{const j=await error.context.json();if(j&&j.error)msg=j.error}catch(e){}throw new Error(msg)}
+  return data;
+}
+
+/* ---------- usuarios ---------- */
+function renderUsers(){
+  const cnt={};for(const m of movs)if(m.autor)cnt[m.autor]=(cnt[m.autor]||0)+1;
+  const list=perfiles.slice().sort((a,b)=>(a.rol===b.rol?0:a.rol==="dueno"?-1:1)||(b.activo-a.activo)||a.nombre.localeCompare(b.nombre));
+  $("#usrtbl").innerHTML=list.length?`<table><thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Estado</th><th class="num">Cargas</th><th></th></tr></thead><tbody>${list.map(p=>`<tr>
+    <td><b>${esc(p.nombre)}</b>${p.id===myId?` <span class="muted">(vos)</span>`:""}</td>
+    <td style="font-family:var(--f-mono)">${esc(p.usuario)}</td>
+    <td>${p.rol==="dueno"?`<span class="role">Dueño</span>`:"Empleado"}</td>
+    <td>${p.activo?`<span class="tag activo">Activo</span>`:`<span class="tag taller">De baja</span>`}</td>
+    <td class="num">${cnt[p.id]||0}</td>
+    <td style="text-align:right"><button class="btn sm" data-act="user-pin" data-id="${esc(p.id)}">Cambiar PIN</button>${p.id!==myId?` <button class="btn sm ${p.activo?"danger":""}" data-act="user-act" data-id="${esc(p.id)}">${p.activo?"Dar de baja":"Reactivar"}</button>`:""}</td>
+  </tr>`).join("")}</tbody></table>`:`<div class="empty" style="padding:16px">Sin usuarios.</div>`;
+}
+function userForm(){
+  openDlg(`<form id="fusr"><div class="dlg-hd"><h3>Nuevo usuario</h3><button type="button" class="x" data-act="close" aria-label="Cerrar">×</button></div>
+  <div class="dlg-bd"><div class="fgrid">
+    <div class="full">${field("u-nombre","Nombre y apellido","","text",'required placeholder="Ej: Juan Pérez"')}</div>
+    ${field("u-usuario","Usuario para entrar","","text",'required autocapitalize="none" autocomplete="off" placeholder="Ej: juanp"')}
+    ${field("u-pin","PIN (6 números)","","text",'required inputmode="numeric" pattern="[0-9]{6,12}" maxlength="12" autocomplete="off" style="letter-spacing:.3em;font-family:var(--f-mono);font-size:18px"')}
+    ${sel("u-rol","Rol",[["empleado","Empleado: carga gastos de reparto"],["dueno","Dueño: acceso total"]],"empleado")}
+  </div>
+  <p class="muted" style="margin:0;font-size:12.5px">Pasale a la persona el link de la app, su usuario y su PIN. Si se lo olvida, se lo cambiás desde acá.</p>
+  <div class="err" id="u-err"></div></div>
+  <div class="dlg-ft"><span class="sp"></span><button type="button" class="btn" data-act="close">Cancelar</button><button type="submit" class="btn primary" id="u-ok">Crear usuario</button></div></form>`);
+  $("#u-usuario").addEventListener("input",e=>{e.target.value=e.target.value.toLowerCase().replace(/\s+/g,"")});
+  $("#fusr").addEventListener("submit",async e=>{e.preventDefault();const b=$("#u-ok");b.disabled=true;$("#u-err").textContent="";
+    const body={accion:"crear",nombre:$("#u-nombre").value.trim(),usuario:$("#u-usuario").value.trim(),pin:$("#u-pin").value.trim(),rol:$("#u-rol").value};
+    try{await fn(body);closeDlg();toast(`Usuario ${body.usuario} creado`);await loadAll()}catch(err){$("#u-err").textContent=err.message;b.disabled=false}});
+}
+function pinForm(id){
+  const p=perfiles.find(x=>x.id===id);if(!p)return;
+  openDlg(`<form id="fpin"><div class="dlg-hd"><h3>Cambiar PIN</h3><button type="button" class="x" data-act="close" aria-label="Cerrar">×</button></div>
+  <div class="dlg-bd"><p style="margin:0">${esc(p.nombre)} · <span style="font-family:var(--f-mono)">${esc(p.usuario)}</span></p>
+  ${field("p-pin","PIN nuevo (6 números)","","text",'required inputmode="numeric" pattern="[0-9]{6,12}" maxlength="12" autocomplete="off" style="letter-spacing:.3em;font-family:var(--f-mono);font-size:18px"')}
+  <div class="err" id="p-err"></div></div>
+  <div class="dlg-ft"><span class="sp"></span><button type="button" class="btn" data-act="close">Cancelar</button><button type="submit" class="btn primary" id="p-ok">Guardar PIN</button></div></form>`);
+  $("#fpin").addEventListener("submit",async e=>{e.preventDefault();const b=$("#p-ok");b.disabled=true;
+    try{await fn({accion:"pin",id,pin:$("#p-pin").value.trim()});closeDlg();toast("PIN actualizado")}catch(err){$("#p-err").textContent=err.message;b.disabled=false}});
+}
+
+function arm(btn,label){if(btn.classList.contains("armed"))return true;btn.classList.add("armed");btn.dataset.orig=btn.textContent;btn.textContent=label;setTimeout(()=>{if(btn.isConnected){btn.classList.remove("armed");btn.textContent=btn.dataset.orig}},4000);return false}
+
+/* ---------- eventos ---------- */
+function setTab(t){ui.tab=t;for(const b of document.querySelectorAll("nav.tabs button"))b.setAttribute("aria-selected",b.dataset.tab===t);
+  for(const k of ["panel","vehiculos","movimientos","usuarios"])$("#v-"+k).hidden=k!==t;try{history.replaceState(null,"","#"+t)}catch(e){}render()}
+document.addEventListener("click",async e=>{
+  const tb=e.target.closest("nav.tabs button");if(tb){setTab(tb.dataset.tab);return}
+  const el=e.target.closest("[data-act]");if(!el)return;const a=el.dataset.act,id=el.dataset.id;
+  if(a==="close")closeDlg();
+  else if(a==="new-veh")vehForm();
+  else if(a==="new-mov")movForm(null,el.dataset.veh);
+  else if(a==="open-veh")openVeh(id);
+  else if(a==="edit-veh")vehForm(id);
+  else if(a==="edit-mov")movForm(id);
+  else if(a==="vcat"){ui.cat=el.dataset.k;renderVehs()}
+  else if(a==="set-dolar")dolarForm();
+  else if(a==="del-mov"){if(!arm(el,"Confirmar eliminación"))return;if(await remove(movCol(movs.find(m=>m.id===id)),id)){toast("Movimiento eliminado");closeDlg()}}
+  else if(a==="del-veh"){const n=movs.filter(m=>m.vehiculoId===id).length;if(!arm(el,n?`Confirmar (borra ${n} movimientos)`:"Confirmar eliminación"))return;
+    if(await remove("vehiculos",id)){toast("Vehículo eliminado");closeDlg()}}
+  else if(a==="del-ej"){if(!arm(el,"Confirmar: borrar ejemplos"))return;
+    const {error}=await sb.from("vehiculos").delete().eq("ejemplo",true);if(error){toast("No se pudo borrar.");return}await loadAll();toast("Ejemplos borrados")}
+  else if(a==="new-user")userForm();
+  else if(a==="user-pin")pinForm(id);
+  else if(a==="user-act"){const p=perfiles.find(x=>x.id===id);if(!p)return;if(p.activo&&!arm(el,"Confirmar baja"))return;
+    try{await fn({accion:"activo",id,activo:!p.activo});toast(p.activo?"Usuario dado de baja":"Usuario reactivado");await loadAll()}catch(err){toast(err.message)}}
+  else if(a==="logout"){await sb.auth.signOut();location.reload()}
+});
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.matches(".alert[data-act]"))e.target.click()});
+$("#showSold").addEventListener("change",e=>{ui.sold=e.target.checked;renderVehs()});
+for(const s of ["#mf-veh","#mf-tipo","#mf-per"])$(s).addEventListener("change",renderMovs);
+
+/* ---------- ingreso ---------- */
+const PINSTYLE='style="letter-spacing:.3em;font-family:var(--f-mono);font-size:18px"';
+function showLogin(msg){
+  $("#app").hidden=true;$("#login").hidden=false;
+  const lb=$("#login-body");
+  lb.innerHTML=`<form id="flog">
+    <h2>Ingresar</h2>
+    ${field("l-usr","Usuario","","text",'required autocapitalize="none" autocomplete="username" autofocus')}
+    ${field("l-pin","PIN","","password",'required inputmode="numeric" autocomplete="current-password" '+PINSTYLE)}
+    <div class="err" id="l-err">${esc(msg||"")}</div>
+    <button class="btn primary" type="submit" id="l-ok">Entrar</button>
+    <p class="muted" style="margin:0;font-size:12.5px">¿No tenés usuario o te olvidaste el PIN? Pedíselo al dueño.</p>
+  </form>`;
+  $("#l-usr").addEventListener("input",e=>{e.target.value=e.target.value.toLowerCase().replace(/\s+/g,"")});
+  $("#flog").addEventListener("submit",async e=>{e.preventDefault();const b=$("#l-ok");b.disabled=true;$("#l-err").textContent="";
+    const u=$("#l-usr").value.trim().toLowerCase(),p=$("#l-pin").value.trim();
+    const {data,error}=await sb.auth.signInWithPassword({email:`${u}@${DOM}`,password:p});
+    if(error){$("#l-err").textContent=/banned/i.test(error.message)?"Tu usuario está dado de baja. Hablá con el dueño.":/rate|many/i.test(error.message)?"Demasiados intentos. Esperá unos minutos.":"Usuario o PIN incorrecto.";b.disabled=false;return}
+    await afterLogin(data.user)});
+  // primera vez: crear la cuenta del dueño
+  fn({accion:"estado"}).then(r=>{if(r&&r.hayDueno===false)showBootstrap()}).catch(()=>{});
+}
+function showBootstrap(){
+  $("#login-body").innerHTML=`<form id="fboot">
+    <h2>Crear cuenta del dueño</h2>
+    <p class="muted" style="margin:0">Es la primera vez que se usa la app. Esta cuenta tiene acceso total y crea los usuarios de los empleados.</p>
+    ${field("b-nombre","Tu nombre","","text",'required autocomplete="name"')}
+    ${field("b-usr","Usuario","","text",'required autocapitalize="none" autocomplete="username" placeholder="Ej: pablo"')}
+    ${field("b-pin","PIN (6 a 12 números)","","password",'required inputmode="numeric" pattern="[0-9]{6,12}" maxlength="12" autocomplete="new-password" '+PINSTYLE)}
+    ${field("b-pin2","Repetí el PIN","","password",'required inputmode="numeric" pattern="[0-9]{6,12}" maxlength="12" autocomplete="new-password" '+PINSTYLE)}
+    <div class="err" id="b-err"></div>
+    <button class="btn primary" type="submit" id="b-ok">Crear y entrar</button>
+  </form>`;
+  $("#b-usr").addEventListener("input",e=>{e.target.value=e.target.value.toLowerCase().replace(/\s+/g,"")});
+  $("#fboot").addEventListener("submit",async e=>{e.preventDefault();const b=$("#b-ok");
+    const nombre=$("#b-nombre").value.trim(),usuario=$("#b-usr").value.trim(),pin=$("#b-pin").value.trim();
+    if(pin!==$("#b-pin2").value.trim()){$("#b-err").textContent="Los PIN no coinciden.";return}
+    b.disabled=true;$("#b-err").textContent="";
+    try{await fn({accion:"bootstrap",nombre,usuario,pin});
+      const {data,error}=await sb.auth.signInWithPassword({email:`${usuario}@${DOM}`,password:pin});
+      if(error)throw new Error("Cuenta creada, pero no se pudo entrar. Probá ingresar con tu usuario y PIN.");
+      await afterLogin(data.user)}catch(err){$("#b-err").textContent=err.message;b.disabled=false}});
+}
+async function afterLogin(user){
+  myId=user.id;
+  const {data:p,error}=await sb.from("perfiles").select("*").eq("id",user.id).maybeSingle();
+  if(error||!p||!p.activo){await sb.auth.signOut();showLogin("Tu usuario está dado de baja o no tiene acceso. Hablá con el dueño.");return}
+  me=fromRow(p);owner=me.rol==="dueno";mode="db";
+  document.body.classList.toggle("staff",!owner);
+  $("#who").innerHTML=`<b>${esc(me.nombre)}</b>${owner?`<span class="role">Dueño</span>`:""}<button class="btn sm" data-act="logout" id="b-logout">Salir</button>`;
+  $("#b-newmov2").textContent=owner?"＋ Cargar gasto o ingreso":"＋ Cargar gasto o service";
+  $("#t-movimientos").textContent=owner?"Gastos e ingresos":"Gastos";
+  $("#login").hidden=true;$("#app").hidden=false;
+  const h=(location.hash||"").slice(1);
+  setTab(["panel","vehiculos","movimientos"].includes(h)||(h==="usuarios"&&owner)?h:"panel");
+  await loadAll();
+}
+
+/* ---------- arranque ---------- */
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&mode==="db")loadAll()});
+setInterval(()=>{if(!document.hidden&&mode==="db"&&!dlg.open)loadAll()},60000);
+sb.auth.onAuthStateChange(ev=>{if(ev==="SIGNED_OUT"&&mode==="db"){mode="loading";showLogin()}});
+(async()=>{
+  const {data:{session}}=await sb.auth.getSession();
+  if(session&&session.user)await afterLogin(session.user);else showLogin();
+})();
+
+})();
+</script>
+</body>
+</html>
